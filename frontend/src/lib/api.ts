@@ -53,40 +53,40 @@ export async function generatePoem(file: File, style: PoemStyle): Promise<PoemRe
 
 export async function generateDummyCard(previewUrl: string, poem: PoemResult): Promise<Blob> {
   return new Promise((resolve) => {
-    const size = 1080;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d")!;
+    const cardWidth = 1080;
+    const textAreaHeight = 320;
 
     const img = new Image();
     img.onload = () => {
-      const scale = Math.max(size / img.width, size / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      // 이미지 원본 비율 유지하며 너비를 1080에 맞춤
+      const imgHeight = Math.round((img.height / img.width) * cardWidth);
 
-      const grad = ctx.createLinearGradient(0, size * 0.35, 0, size);
-      grad.addColorStop(0, "rgba(0,0,0,0)");
-      grad.addColorStop(0.5, "rgba(0,0,0,0.6)");
-      grad.addColorStop(1, "rgba(0,0,0,0.9)");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, size, size);
+      const canvas = document.createElement("canvas");
+      canvas.width = cardWidth;
+      canvas.height = imgHeight + textAreaHeight;
+      const ctx = canvas.getContext("2d")!;
 
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = 12;
+      // 이미지 전체를 비율 그대로 상단에 그림
+      ctx.drawImage(img, 0, 0, cardWidth, imgHeight);
 
+      // 텍스트 영역 배경
+      ctx.fillStyle = "#1a1a24";
+      ctx.fillRect(0, imgHeight, cardWidth, textAreaHeight);
+
+      // 제목
       ctx.fillStyle = "white";
       ctx.font = "bold 52px sans-serif";
-      ctx.fillText(poem.title, 64, size - 320);
+      ctx.fillText(poem.title, 64, imgHeight + 80);
 
-      ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.fillRect(64, size - 290, 80, 2);
+      // 구분선
+      ctx.fillStyle = "rgba(167,139,250,0.6)";
+      ctx.fillRect(64, imgHeight + 104, 80, 2);
 
+      // 본문
       ctx.fillStyle = "#e5e7eb";
       ctx.font = "36px sans-serif";
       poem.body.split("\n").forEach((line, i) => {
-        ctx.fillText(line, 64, size - 248 + i * 56);
+        ctx.fillText(line, 64, imgHeight + 156 + i * 54);
       });
 
       canvas.toBlob((blob) => resolve(blob!), "image/png");

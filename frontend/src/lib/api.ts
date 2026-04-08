@@ -7,7 +7,7 @@ export interface PoemResult {
   body: string;
 }
 
-export const DUMMY_MODE = true;
+export const DUMMY_MODE = process.env.NEXT_PUBLIC_DUMMY_MODE === "true";
 
 const DUMMY_POEMS: Record<PoemStyle, PoemResult> = {
   auto: {

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { generatePoem, generateCard, PoemStyle, PoemResult } from "@/lib/api";
+import { generatePoem, generateCard, generateDummyCard, DUMMY_MODE, PoemStyle, PoemResult } from "@/lib/api";
 
 const STYLES: { value: PoemStyle; label: string; desc: string }[] = [
   { value: "auto", label: "✨ AI 자동", desc: "사진 분위기에 맞게" },
@@ -50,10 +50,17 @@ export default function Home() {
   };
 
   const handleDownloadCard = async () => {
-    if (!file || !poem) return;
+    if (!poem) return;
     setCardLoading(true);
     try {
-      const { blob, title } = await generateCard(file, style);
+      let blob: Blob;
+      let title: string = poem.title;
+      if (DUMMY_MODE && preview) {
+        blob = await generateDummyCard(preview, poem);
+      } else {
+        if (!file) return;
+        ({ blob, title } = await generateCard(file, style));
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -166,11 +173,19 @@ export default function Home() {
             {preview && (
               <img src={preview} alt="uploaded" className="w-full max-h-72 object-cover" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-            <div className="absolute bottom-0 left-0 p-6">
-              <h2 className="text-xl font-bold text-white mb-2">{poem.title}</h2>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6">
+              <h2
+                className="text-xl font-bold text-white mb-2"
+                style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}
+              >
+                {poem.title}
+              </h2>
               <div className="w-12 h-0.5 bg-white/60 mb-3" />
-              <p className="text-gray-200 text-sm whitespace-pre-line leading-relaxed">
+              <p
+                className="text-gray-100 text-sm whitespace-pre-line leading-relaxed"
+                style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+              >
                 {poem.body}
               </p>
             </div>

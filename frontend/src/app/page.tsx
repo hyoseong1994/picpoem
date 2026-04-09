@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { generatePoem, generateCard, generateDummyCard, DUMMY_MODE, PoemStyle, PoemResult } from "@/lib/api";
+import { generatePoem, generateCard, DUMMY_MODE, PoemStyle, PoemResult } from "@/lib/api";
 
 const STYLES: { value: PoemStyle; label: string; desc: string }[] = [
   { value: "auto", label: "✨ AI 자동", desc: "사진 분위기에 맞게" },
@@ -50,21 +50,14 @@ export default function Home() {
   };
 
   const handleDownloadCard = async () => {
-    if (!poem) return;
+    if (!poem || !preview) return;
     setCardLoading(true);
     try {
-      let blob: Blob;
-      let title: string = poem.title;
-      if (DUMMY_MODE && preview) {
-        blob = await generateDummyCard(preview, poem);
-      } else {
-        if (!file) return;
-        ({ blob, title } = await generateCard(file, style));
-      }
+      const blob = await generateCard(preview, poem);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${title}_picpoem.png`;
+      a.download = `${poem.title}_picpoem.png`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {

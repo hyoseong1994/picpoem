@@ -50,11 +50,16 @@ export async function generatePoem(file: File, style: PoemStyle): Promise<PoemRe
 }
 
 export async function generateCard(previewUrl: string, poem: PoemResult): Promise<Blob> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const cardWidth = 1080;
     const textAreaHeight = 320;
+    const bodyStartOffset = 156;
+    const lineHeight = 54;
+    const bottomPadding = 16;
+    const maxLines = Math.floor((textAreaHeight - bodyStartOffset - bottomPadding) / lineHeight);
 
     const img = new Image();
+    img.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."));
     img.onload = () => {
       const imgHeight = Math.round((img.height / img.width) * cardWidth);
 
@@ -77,8 +82,13 @@ export async function generateCard(previewUrl: string, poem: PoemResult): Promis
 
       ctx.fillStyle = "#e5e7eb";
       ctx.font = "36px sans-serif";
-      poem.body.split("\n").forEach((line, i) => {
-        ctx.fillText(line, 64, imgHeight + 156 + i * 54);
+      const bodyLines = poem.body.split("\n");
+      const visibleLines = bodyLines.slice(0, maxLines);
+      if (bodyLines.length > maxLines) {
+        visibleLines[maxLines - 1] = visibleLines[maxLines - 1].trimEnd() + "…";
+      }
+      visibleLines.forEach((line, i) => {
+        ctx.fillText(line, 64, imgHeight + bodyStartOffset + i * lineHeight);
       });
 
       canvas.toBlob((blob) => resolve(blob!), "image/png");

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
+if (!process.env.KANANA_API_KEY) {
+  throw new Error("KANANA_API_KEY 환경변수가 설정되지 않았습니다.");
+}
+
 const client = new OpenAI({
   baseURL: process.env.KANANA_BASE_URL ?? "https://kanana-o.a2s-endpoint.kr-central-2.kakaocloud.com/v1",
-  apiKey: process.env.KANANA_API_KEY!,
+  apiKey: process.env.KANANA_API_KEY,
 });
 
 const STYLE_PROMPTS: Record<string, string> = {
@@ -37,33 +41,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: "지원하지 않는 이미지 형식입니다. (jpg, png, webp)" }, { status: 400 });
   if (!ALLOWED_STYLES.has(style))
     return NextResponse.json({ detail: "지원하지 않는 스타일입니다." }, { status: 400 });
-
-  const imageBytes = await file.arrayBuffer();
-  if (imageBytes.byteLength > MAX_BYTES)
+  if (file.size > MAX_BYTES)
     return NextResponse.json({ detail: "이미지 크기는 10MB 이하여야 합니다." }, { status: 413 });
 
+  const imageBytes = await file.arrayBuffer();
   const b64 = Buffer.from(imageBytes).toString("base64");
   const dataUrl = `data:${file.type};base64,${b64}`;
   const prompt = BASE_PROMPT.replace("{style_instruction}", STYLE_PROMPTS[style] ?? STYLE_PROMPTS.auto);
 
-  const response = await client.chat.completions.create({
-    model: process.env.KANANA_MODEL ?? "kanana-o",
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: dataUrl } },
-          { type: "text", text: prompt },
-        ],
-      },
-    ],
-  });
+  try {
+    const response = await client.chat.completions.create({
+      model: process.env.KANANA_MODEL ?? "kanana-o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: dataUrl } },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+    });
 
-  const raw = response.choices[0].message.content?.trim() ?? "";
-  const lines = raw.split("\n");
-  const title = lines[0]?.trim() ?? "무제";
-  const bodyLines = lines.length > 2 ? lines.slice(2) : lines.slice(1);
-  const body = bodyLines.join("\n").trim();
+    const raw = response.choices[0].message.content?.trim() ?? "";
+    const lines = raw.split("\n");
+    const title = lines[0]?.trim() ?? "무제";
+    const bodyLines = lines.length > 2 ? lines.slice(2) : lines.slice(1);
+    const body = bodyLines.join("\n").trim();
 
-  return NextResponse.json({ title, body });
+    return NextResponse.json({ title, body });
+  } catch (err) {
+    console.error("[poem/generate] AI API 호출 실패:", err);
+    return NextResponse.json(
+      { detail: "AI 서비스 오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
+      { status: 502 }
+    );
+  }
 }

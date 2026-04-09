@@ -1,5 +1,3 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 export type PoemStyle = "auto" | "modern" | "haiku" | "romantic";
 
 export interface PoemResult {
@@ -38,7 +36,7 @@ export async function generatePoem(file: File, style: PoemStyle): Promise<PoemRe
   form.append("file", file);
   form.append("style", style);
 
-  const res = await fetch(`${API_BASE}/api/poem/generate`, {
+  const res = await fetch("/api/poem/generate", {
     method: "POST",
     body: form,
   });
@@ -51,14 +49,13 @@ export async function generatePoem(file: File, style: PoemStyle): Promise<PoemRe
   return res.json();
 }
 
-export async function generateDummyCard(previewUrl: string, poem: PoemResult): Promise<Blob> {
+export async function generateCard(previewUrl: string, poem: PoemResult): Promise<Blob> {
   return new Promise((resolve) => {
     const cardWidth = 1080;
     const textAreaHeight = 320;
 
     const img = new Image();
     img.onload = () => {
-      // 이미지 원본 비율 유지하며 너비를 1080에 맞춤
       const imgHeight = Math.round((img.height / img.width) * cardWidth);
 
       const canvas = document.createElement("canvas");
@@ -66,23 +63,18 @@ export async function generateDummyCard(previewUrl: string, poem: PoemResult): P
       canvas.height = imgHeight + textAreaHeight;
       const ctx = canvas.getContext("2d")!;
 
-      // 이미지 전체를 비율 그대로 상단에 그림
       ctx.drawImage(img, 0, 0, cardWidth, imgHeight);
 
-      // 텍스트 영역 배경
       ctx.fillStyle = "#1a1a24";
       ctx.fillRect(0, imgHeight, cardWidth, textAreaHeight);
 
-      // 제목
       ctx.fillStyle = "white";
       ctx.font = "bold 52px sans-serif";
       ctx.fillText(poem.title, 64, imgHeight + 80);
 
-      // 구분선
       ctx.fillStyle = "rgba(167,139,250,0.6)";
       ctx.fillRect(64, imgHeight + 104, 80, 2);
 
-      // 본문
       ctx.fillStyle = "#e5e7eb";
       ctx.font = "36px sans-serif";
       poem.body.split("\n").forEach((line, i) => {
@@ -93,24 +85,4 @@ export async function generateDummyCard(previewUrl: string, poem: PoemResult): P
     };
     img.src = previewUrl;
   });
-}
-
-export async function generateCard(file: File, style: PoemStyle): Promise<{ blob: Blob; title: string }> {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("style", style);
-
-  const res = await fetch(`${API_BASE}/api/poem/card`, {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "카드 생성에 실패했어요. 다시 시도해주세요.");
-  }
-
-  const blob = await res.blob();
-  const title = res.headers.get("X-Poem-Title") ?? "picpoem_card";
-  return { blob, title };
 }
